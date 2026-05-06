@@ -3,11 +3,11 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  FileEdit, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Calendar,
+  FileEdit,
+  BarChart3,
   LogOut,
   Menu,
   Instagram,
@@ -53,11 +53,11 @@ export default function DashboardLayout({
       const workspaces = await getUserWorkspaces(user.id);
       if (workspaces && workspaces.length > 0) {
         const storedId = localStorage.getItem("active_workspace_id");
-        const active = storedId 
+        const active = storedId
           ? workspaces.find((ws: any) => ws.id_workspace.toString() === storedId) || workspaces[0]
           : workspaces[0];
         setActiveWorkspace(active);
-        
+
         // Also ensure the stored ID matches the one we're using
         localStorage.setItem("active_workspace_id", active.id_workspace.toString());
       }
@@ -81,7 +81,7 @@ export default function DashboardLayout({
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={toggleSidebar}
         />
@@ -134,8 +134,8 @@ export default function DashboardLayout({
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group text-sm font-medium",
-                    isActive 
-                      ? "bg-[#10b981]/10 border border-[#10b981]/30 text-white" 
+                    isActive
+                      ? "bg-[#10b981]/10 border border-[#10b981]/30 text-white"
                       : "text-white/70 hover:bg-white/5 hover:text-white border border-transparent"
                   )}
                 >
@@ -152,7 +152,7 @@ export default function DashboardLayout({
 
         {/* Bottom Actions */}
         <div className="p-6 border-t border-[#1B3C37]">
-          <button 
+          <button
             onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center justify-center gap-3 w-full px-4 py-3 border border-white/20 text-white hover:bg-white/5 rounded-xl transition-all duration-200"
           >
@@ -166,7 +166,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header (Only visible on mobile) */}
         <header className="h-16 bg-white border-b border-border-custom flex items-center px-4 lg:hidden shrink-0">
-          <button 
+          <button
             className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             onClick={toggleSidebar}
           >

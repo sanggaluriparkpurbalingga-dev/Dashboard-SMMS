@@ -42,3 +42,5 @@ next-env.d.ts
 
 # Design Assets
 SMMS UI/
+
+/lib/generated/prisma

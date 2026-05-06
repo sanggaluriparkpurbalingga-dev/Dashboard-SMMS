@@ -1,73 +1,68 @@
 import { createClient } from '@/lib/supabase/client';
+import { prisma } from '@/lib/prisma';
 
 const supabase = createClient();
 
-export async function getKonten(workspaceId?: string | number) {
-  let query = supabase.from('konten').select('*, evaluasi(*)');
-  
-  if (workspaceId) {
-    query = query.eq('id_workspace', workspaceId);
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    console.error('Error fetching konten:', error);
-    throw error;
-  }
-  return data;
+/**
+ * Utility untuk serialize BigInt agar aman dikirim dari Server Action ke Client
+ */
+function serializeData(obj: any): any {
+  return JSON.parse(JSON.stringify(obj, (key, value) =>
+    typeof value === 'bigint' ? Number(value) : value
+  ));
 }
 
-export async function createKonten(konten: any) {
-  const { data, error } = await supabase
-    .from('konten')
-    .insert([konten])
-    .select()
-    .single();
+export async function getKonten(workspaceId?: string | number) {
+  const data = await prisma.konten.findMany({
+    where: workspaceId ? { id_workspace: Number(workspaceId) } : undefined,
+    include: {
+      evaluasi: true
+    }
+  });
 
-  if (error) {
-    console.error('Error creating konten:', error);
-    throw error;
-  }
+  return serializeData(data);
+}
 
-  return data;
+export async function createKonten(kontenData: any) {
+  // Ambil sesi user yang sedang login secara otomatis di Backend
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Gabungkan payload dari Frontend dengan author_id
+  const payload = {
+    ...kontenData,
+    ...(user && { author_id: user.id }), // Otomatis terisi jika user login
+  };
+
+  const data = await prisma.konten.create({
+    data: payload
+  });
+
+  return serializeData(data);
 }
 
 export async function updateKonten(id: string | number, updates: any) {
-  const { data, error } = await supabase
-    .from('konten')
-    .update(updates)
-    .eq('id_konten', id)
-    .select()
-    .single();
+  const data = await prisma.konten.update({
+    where: { id_konten: Number(id) },
+    data: {
+      ...updates,
+      updated_at: new Date(),
+    }
+  });
 
-  if (error) {
-    console.error('Error updating konten:', error);
-    throw error;
-  }
-
-  return data;
+  return serializeData(data);
 }
 
 export async function deleteKonten(id: string | number) {
-  const { error } = await supabase
-    .from('konten')
-    .delete()
-    .eq('id_konten', id);
-
-  if (error) {
-    console.error('Error deleting konten:', error);
-    throw error;
-  }
+  await prisma.konten.delete({
+    where: { id_konten: Number(id) }
+  });
 }
 
-
-export async function getTopKonten(workspaceId: number, year: number, month: number, metric: string = 'views', limit: number = 5) {
+export async function getTopKonten(workspaceId: number, year: number, month: number, limit: number = 5) {
   const { data, error } = await supabase.rpc('get_top_konten_bulanan', {
-    p_workspace_id: workspaceId,
-    p_year: year,
-    p_month: month,
-    p_metric: metric,
-    p_limit: limit,
+    ws_id: workspaceId,
+    target_year: year,
+    target_month: month,
   });
 
   if (error) {
@@ -79,9 +74,9 @@ export async function getTopKonten(workspaceId: number, year: number, month: num
 
 export async function getGrowth(workspaceId: number, year: number, month: number) {
   const { data, error } = await supabase.rpc('get_growth_views_bulanan', {
-    p_workspace_id: workspaceId,
-    p_year: year,
-    p_month: month,
+    ws_id: workspaceId,
+    target_year: year,
+    target_month: month,
   });
 
   if (error) {
@@ -95,33 +90,24 @@ export async function getGrowth(workspaceId: number, year: number, month: number
 // FUNGSI STORAGE & UPLOAD UNTUK FRONTEND
 // ==========================================
 
-/**
- * 1. Fungsi Upload yang "Satu Pintu" & 4. Validasi Pencegahan Error
- * Mengunggah file ke bucket konten-media, memvalidasi tipe/ukuran, dan mereturn Public URL.
- */
 export async function uploadAsset(file: File, workspaceId: string | number) {
-  // Validasi: Hanya menerima gambar atau video
   if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
     throw new Error('Tipe file tidak didukung. Mohon unggah gambar atau video.');
   }
 
-  // Validasi: Ukuran maksimal 50MB
   const MAX_SIZE_MB = 50;
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     throw new Error(`Ukuran file terlalu besar. Maksimal pengunggahan adalah ${MAX_SIZE_MB}MB.`);
   }
 
-  // 3. Folder/Pathing Terorganisir berdasarkan ID Workspace
-  // Membersihkan nama file dari spasi dan karakter aneh agar URL friendly
   const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
   const filePath = `${workspaceId}/${Date.now()}_${safeFileName}`;
 
-  // Mengunggah ke Supabase Storage
   const { error } = await supabase.storage
     .from('konten-media')
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: false // Jangan timpa file dengan nama sama (karena sudah pakai Date.now)
+      upsert: false
     });
 
   if (error) {
@@ -129,7 +115,6 @@ export async function uploadAsset(file: File, workspaceId: string | number) {
     throw new Error(`Gagal mengunggah file: ${error.message}`);
   }
 
-  // Langsung mengambil Public URL
   const { data: publicUrlData } = supabase.storage
     .from('konten-media')
     .getPublicUrl(filePath);
@@ -137,29 +122,21 @@ export async function uploadAsset(file: File, workspaceId: string | number) {
   return publicUrlData.publicUrl;
 }
 
-/**
- * 2. Integrasi ke Tabel Konten
- * Mengunggah file media lalu langsung menyimpannya ke tabel konten.
- */
 export async function saveKontenWithMedia(kontenData: any, file: File) {
   if (!kontenData.id_workspace) {
     throw new Error('Data gagal disimpan: id_workspace tidak ditemukan.');
   }
 
   try {
-    // A. Proses upload dan ambil URL-nya
     const publicUrl = await uploadAsset(file, kontenData.id_workspace);
 
-    // B. Gabungkan URL ke properti link_konten
     const payload = {
       ...kontenData,
       link_konten: publicUrl
     };
 
-    // C. Simpan ke database menggunakan fungsi createKonten yang sudah ada
     return await createKonten(payload);
   } catch (error) {
     throw error;
   }
 }
-

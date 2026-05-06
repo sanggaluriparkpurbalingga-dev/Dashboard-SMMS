@@ -13,7 +13,7 @@ export default function WorkspacesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [selectedWsId, setSelectedWsId] = useState<number | null>(null);
-  
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -28,7 +28,7 @@ export default function WorkspacesPage() {
       if (user) {
         const data = await getUserWorkspaces(user.id);
         setWorkspaces(data || []);
-        
+
         const storedId = localStorage.getItem("active_workspace_id");
         if (storedId && data && data.find(ws => ws.id_workspace.toString() === storedId)) {
           setSelectedWsId(Number(storedId));
@@ -109,8 +109,8 @@ export default function WorkspacesPage() {
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 required
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isCreating}
                 className="absolute right-2 top-2 bottom-2 px-6 bg-[#052e24] text-white font-bold rounded-full hover:bg-[#073d30] transition-all flex items-center gap-2 text-xs border border-[#10b981]/30 disabled:opacity-70"
               >
@@ -135,18 +135,18 @@ export default function WorkspacesPage() {
         <p className="text-[#849591] text-sm mb-10">Halo! Pilih workspace untuk mulai bekerja.</p>
 
         <div className="space-y-4 mb-10">
-          {workspaces.map((ws) => {
+          {workspaces.map((ws: any) => {
             const isTikTok = ws.nama_workspace.toLowerCase().includes("tiktok");
             const isSelected = selectedWsId === ws.id_workspace;
-            
+
             return (
-              <button 
+              <button
                 key={ws.id_workspace}
                 onClick={() => setSelectedWsId(ws.id_workspace)}
                 className={clsx(
                   "w-full p-4 rounded-2xl flex items-center gap-4 border transition-all text-left group",
-                  isSelected 
-                    ? "bg-[#10b981]/10 border-[#10b981] text-white" 
+                  isSelected
+                    ? "bg-[#10b981]/10 border-[#10b981] text-white"
                     : "bg-[#0f1516] border-white/5 text-[#849591] hover:border-white/20"
                 )}
               >
@@ -165,7 +165,7 @@ export default function WorkspacesPage() {
           })}
         </div>
 
-        <button 
+        <button
           onClick={handleEnterDashboard}
           className="w-full py-4 bg-[#10b981] text-white font-bold rounded-2xl hover:bg-[#059669] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#10b981]/20"
         >
@@ -173,7 +173,7 @@ export default function WorkspacesPage() {
           <ArrowRight className="w-5 h-5" />
         </button>
 
-        <button 
+        <button
           onClick={() => setWorkspaces([])} // Trigger scenario A for demo or just allow adding
           className="mt-6 text-[#849591] text-xs font-semibold hover:text-[#10b981] transition-colors"
         >

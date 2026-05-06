@@ -15,7 +15,7 @@ const mockEvents: Record<
     description: string;
     contentLink?: string;
     status: string;
-  }
+  }[]
 > = {
   "2026-04-05": [
     {
@@ -447,13 +447,13 @@ export default function CalendarPage() {
                     className={clsx(
                       "px-6 py-2 rounded-xl text-xs font-bold border shrink-0 text-center",
                       event.status === "Uploaded" &&
-                        "bg-[#ccfbf1] text-[#0f766e] border-[#0f766e]/10",
+                      "bg-[#ccfbf1] text-[#0f766e] border-[#0f766e]/10",
                       event.status === "Pending" &&
-                        "bg-[#fef3c7] text-[#92400e] border-[#92400e]/10",
+                      "bg-[#fef3c7] text-[#92400e] border-[#92400e]/10",
                       event.status === "Unuploaded" &&
-                        "bg-[#fee2e2] text-[#991b1b] border-[#991b1b]/10",
+                      "bg-[#fee2e2] text-[#991b1b] border-[#991b1b]/10",
                       event.status === "Cancelled" &&
-                        "bg-gray-100 text-gray-500 border-gray-200",
+                      "bg-gray-100 text-gray-500 border-gray-200",
                     )}
                   >
                     {event.status}

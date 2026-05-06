@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useState, use } from "react";
-import { 
-  BarChart3, 
-  Users, 
-  Heart, 
-  Eye, 
+import {
+  BarChart3,
+  Users,
+  Heart,
+  Eye,
   ArrowLeft,
   Settings,
   Calendar as CalendarIcon,
@@ -30,7 +30,7 @@ export default function WorkspaceDetailPage({ params }: { params: Promise<{ id: 
       setIsLoading(true);
       try {
         const wsId = resolvedParams.id;
-        
+
         // Fetch workspace detail
         const wsData = await getWorkspaceById(wsId);
         setWorkspace(wsData);
@@ -119,7 +119,7 @@ export default function WorkspaceDetailPage({ params }: { params: Promise<{ id: 
       views: evaluasi.total_views?.toString() || "0",
       likes: evaluasi.total_likes?.toString() || "0",
       comments: evaluasi.total_comment?.toString() || "0",
-      status: k.status_konten as any,
+      status: k.status_konten ? k.status_konten.charAt(0).toUpperCase() + k.status_konten.slice(1).toLowerCase() : "Pending" as any,
       thumbnail: `https://picsum.photos/seed/${k.id_konten || 'x'}/200/200`
     };
   });
@@ -154,7 +154,7 @@ export default function WorkspaceDetailPage({ params }: { params: Promise<{ id: 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <StatCard 
+          <StatCard
             key={index}
             title={stat.title}
             value={stat.value}
@@ -174,10 +174,10 @@ export default function WorkspaceDetailPage({ params }: { params: Promise<{ id: 
             <span>Filter Data</span>
           </button>
         </div>
-        
-        <ContentTable 
-          title="Semua Konten Workspace" 
-          items={formattedKonten} 
+
+        <ContentTable
+          title="Semua Konten Workspace"
+          items={formattedKonten}
         />
       </div>
     </div>

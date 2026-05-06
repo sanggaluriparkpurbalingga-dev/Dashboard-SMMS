@@ -51,12 +51,11 @@ export function ContentTable({ title, items }: ContentTableProps) {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider ${
-                    item.status === "Uploaded" ? "bg-[#ccfbf1] text-[#0f766e]" :
-                    item.status === "Pending" ? "bg-[#fef3c7] text-[#92400e]" :
-                    item.status === "Unuploaded" ? "bg-[#fee2e2] text-[#991b1b]" :
-                    "bg-gray-100 text-gray-500"
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider ${item.status === "Uploaded" ? "bg-[#ccfbf1] text-[#0f766e]" :
+                      item.status === "Pending" ? "bg-[#fef3c7] text-[#92400e]" :
+                        item.status === "Unuploaded" ? "bg-[#fee2e2] text-[#991b1b]" :
+                          "bg-gray-100 text-gray-500"
+                    }`}>
                     {item.status}
                   </span>
                 </td>

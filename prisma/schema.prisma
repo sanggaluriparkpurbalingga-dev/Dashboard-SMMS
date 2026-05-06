@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum pillar_konten {
+  awareness
+  consideration
+  conversion
+}
+
+enum status_konten_enum {
+  uploaded
+  unuploaded
+  pending
+  cancelled
+}
+
+model workspace {
+  id_workspace   BigInt    @id @default(autoincrement())
+  nama_workspace String    @unique
+  slug           String?
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  author_id      String?   @db.Uuid
+
+  konten         konten[]
+}
+
+model konten {
+  id_konten        BigInt             @id @default(autoincrement())
+  id_workspace     BigInt?
+  nama_konten      String?
+  deskripsi_konten String?
+  tanggal_upload   DateTime?          @db.Date
+  pillar           pillar_konten?
+  status_konten    status_konten_enum?
+  link_konten      String?
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  jenis_konten     String?
+  author_id        String?            @db.Uuid
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+
+  workspace        workspace?         @relation(fields: [id_workspace], references: [id_workspace])
+  evaluasi         evaluasi[]
+}
+
+model evaluasi {
+  id_evaluasi      BigInt    @id @default(autoincrement())
+  id_konten        BigInt?
+  tanggal_evaluasi DateTime? @db.Date
+  total_likes      Int?      @default(0)
+  total_views      Int?      @default(0)
+  total_comment    Int?      @default(0)
+  total_shares     Int?      @default(0)
+  total_favorites  Int?      @default(0)
+  /// Generated column: ER = ((likes + comment + shares + favorites) / views) * 100
+  nilai_er         Decimal?  @db.Decimal
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+
+  konten           konten?   @relation(fields: [id_konten], references: [id_konten], onDelete: Cascade)
+}

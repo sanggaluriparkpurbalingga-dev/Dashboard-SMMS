@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { 
-  BarChart3, 
-  Heart, 
+import {
+  BarChart3,
+  Heart,
   ArrowUpRight,
   Loader2,
   UploadCloud,
@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [konten, setKonten] = useState<any[]>([]);
   const [topKonten, setTopKonten] = useState<any[]>([]);
   const [growth, setGrowth] = useState<any>(null);
-  
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -35,12 +35,12 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const workspaces = await getUserWorkspaces(user.id);
-        
+
         const storedId = localStorage.getItem("active_workspace_id");
-        const activeWs = storedId 
+        const activeWs = storedId
           ? workspaces?.find((ws: any) => ws.id_workspace.toString() === storedId) || workspaces?.[0]
           : workspaces?.[0];
-          
+
         setWorkspace(activeWs);
 
         if (activeWs) {
@@ -96,7 +96,7 @@ export default function DashboardPage() {
   const stats = [
     {
       title: "Total Content Uploaded This Month",
-      value: konten.filter(k => k.status_konten === 'Uploaded').length.toString(),
+      value: konten.filter(k => k.status_konten?.toLowerCase() === 'uploaded').length.toString(),
       icon: <div className="p-2 bg-[#EEF2FF] rounded-lg text-[#6366F1]"><UploadCloud className="w-5 h-5" /></div>,
       trendText: "↑ 4 dari target",
     },
@@ -108,7 +108,7 @@ export default function DashboardPage() {
     },
     {
       title: "Total Likes Bulan Ini",
-      value: totalLikes > 1000 ? `${(totalLikes/1000).toFixed(1)}K` : totalLikes.toString(),
+      value: totalLikes > 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes.toString(),
       icon: <div className="p-2 bg-[#FEF2F2] rounded-lg text-[#EF4444]"><Heart className="w-5 h-5" /></div>,
       trendText: "↑ +5%",
     },
@@ -124,19 +124,20 @@ export default function DashboardPage() {
 
   // Pillars count
   const pillars = {
-    AWARENESS: konten.filter(k => k.pillar === 'AWARENESS').length || 5, // fallback 5
-    CONSIDERATION: konten.filter(k => k.pillar === 'CONSIDERATION').length || 4, // fallback 4
-    CONVERSION: konten.filter(k => k.pillar === 'CONVERSION').length || 3 // fallback 3
+    AWARENESS: konten.filter(k => k.pillar?.toLowerCase() === 'awareness').length || 5, // fallback 5
+    CONSIDERATION: konten.filter(k => k.pillar?.toLowerCase() === 'consideration').length || 4, // fallback 4
+    CONVERSION: konten.filter(k => k.pillar?.toLowerCase() === 'conversion').length || 3 // fallback 3
   };
 
   // Mapped recent content
   const recentContent = konten.slice(0, 5).map(k => {
     let badgeColor = "bg-[#ECFCCB] text-[#4D7C0F]";
     let badgeText = "UPLOADED";
-    if (k.status_konten === "Unuploaded") { badgeColor = "bg-[#FEE2E2] text-[#B91C1C]"; badgeText = "UNUPLOADED"; }
-    if (k.status_konten === "Pending") { badgeColor = "bg-[#FFEDD5] text-[#C2410C]"; badgeText = "PENDING"; }
-    if (k.status_konten === "Cancelled") { badgeColor = "bg-[#F3F4F6] text-[#6B7280]"; badgeText = "CANCELLED"; }
-    
+    const status = k.status_konten?.toLowerCase();
+    if (status === "unuploaded") { badgeColor = "bg-[#FEE2E2] text-[#B91C1C]"; badgeText = "UNUPLOADED"; }
+    if (status === "pending") { badgeColor = "bg-[#FFEDD5] text-[#C2410C]"; badgeText = "PENDING"; }
+    if (status === "cancelled") { badgeColor = "bg-[#F3F4F6] text-[#6B7280]"; badgeText = "CANCELLED"; }
+
     return {
       id: k.id_konten,
       title: k.nama_konten,
@@ -184,7 +185,7 @@ export default function DashboardPage() {
 
       {/* Main Grid: Left & Right */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
+
         {/* LEFT COLUMN: Today's Upload */}
         <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between mb-6">
@@ -220,22 +221,22 @@ export default function DashboardPage() {
 
         {/* RIGHT COLUMN */}
         <div className="space-y-6">
-          
+
           {/* Top Performer Card */}
           <div className="bg-[#161A28] rounded-2xl p-6 text-white shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <Star className="w-4 h-4 text-[#F59E0B] fill-[#F59E0B]" />
               <span className="text-xs font-bold text-[#F59E0B]">Top Performer</span>
             </div>
-            
+
             <h3 className="text-xl font-bold mb-6">
               {mainTopKonten ? mainTopKonten.nama_konten : "Vlog Keseruan Anak SD"}
             </h3>
-            
+
             <div className="grid grid-cols-6 gap-2">
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Views</p>
-                <p className="text-sm font-bold">{mainTopKonten ? (mainTopKonten.metric_value/1000).toFixed(1) + 'K' : '15.2K'}</p>
+                <p className="text-sm font-bold">{mainTopKonten ? (mainTopKonten.metric_value / 1000).toFixed(1) + 'K' : '15.2K'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Likes</p>
@@ -293,7 +294,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex justify-between mt-2">
               <span className="text-[9px] font-bold text-gray-400">4.2K views</span>
-              <span className="text-[9px] font-bold text-gray-400 text-right">15.2K<br/>views</span>
+              <span className="text-[9px] font-bold text-gray-400 text-right">15.2K<br />views</span>
             </div>
           </div>
 

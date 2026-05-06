@@ -1,51 +1,38 @@
-import { createClient } from '@/lib/supabase/client';
+import { prisma } from '@/lib/prisma';
 
-const supabase = createClient();
+function serializeData(obj: any): any {
+  return JSON.parse(JSON.stringify(obj, (key, value) =>
+    typeof value === 'bigint' ? Number(value) : value
+  ));
+}
 
 export async function getUserWorkspaces(userId: string) {
-  const { data, error } = await supabase
-    .from('workspace')
-    .select('*')
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('Error fetching workspaces:', error);
-    throw error;
-  }
-  return data;
+  const data = await prisma.workspace.findMany({
+    where: { author_id: userId }
+  });
+  return serializeData(data);
 }
 
 export async function createWorkspace(userId: string, name: string) {
-  const { data, error } = await supabase
-    .from('workspace')
-    .insert([
-      {
-        nama_workspace: name,
-        user_id: userId,
-      }
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating workspace:', error);
-    throw error;
-  }
-  return data;
+  const slug = name.toLowerCase().replace(/\s+/g, '-');
+  const data = await prisma.workspace.create({
+    data: {
+      nama_workspace: name,
+      slug: slug,
+      author_id: userId,
+    }
+  });
+  return serializeData(data);
 }
 
 export async function getWorkspaceById(workspaceId: string | number) {
-  const { data, error } = await supabase
-    .from('workspace')
-    .select('*')
-    .eq('id_workspace', workspaceId)
-    .single();
-
-  if (error) {
-    console.error('Error fetching workspace:', error);
-    throw error;
-  }
-
-  return data;
+  const data = await prisma.workspace.findFirst({
+    where: { id_workspace: BigInt(workspaceId) }
+  });
+  return serializeData(data);
 }
 
+export async function getAllWorkspaces() {
+  const data = await prisma.workspace.findMany();
+  return serializeData(data);
+}
