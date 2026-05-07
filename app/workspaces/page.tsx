@@ -30,7 +30,7 @@ export default function WorkspacesPage() {
         setWorkspaces(data || []);
 
         const storedId = localStorage.getItem("active_workspace_id");
-        if (storedId && data && data.find(ws => ws.id_workspace.toString() === storedId)) {
+        if (storedId && data && data.find((ws: any) => ws.id_workspace.toString() === storedId)) {
           setSelectedWsId(Number(storedId));
         } else if (data && data.length > 0) {
           setSelectedWsId(data[0].id_workspace);
