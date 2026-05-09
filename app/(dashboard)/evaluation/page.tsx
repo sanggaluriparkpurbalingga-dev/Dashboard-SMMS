@@ -1,85 +1,212 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Download } from "lucide-react";
 import { clsx } from "clsx";
 import { Modal } from "@/components/ui/Modal";
 import { SuccessDialog } from "@/components/ui/SuccessDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { getKonten } from "@/lib/services/konten";
+import { createEvaluasi, updateEvaluasi, deleteEvaluasi, getEvaluasiByKonten } from "@/lib/services/evaluasi";
+import { Loader2 } from "lucide-react";
 
-const initialStats = [
-  { label: "Best Content of Month", value: "7" },
-  { label: "Uploaded", value: "7", valueColor: "text-[#10b981]" },
-  { label: "Unuploaded", value: "6", valueColor: "text-[#ef4444]" },
-  { label: "Pending", value: "1", valueColor: "text-[#f59e0b]" },
-  { label: "Cancelled", value: "0", valueColor: "text-[#64748b]" },
-];
-
-const initialData = [
-  { id: 1, name: "Vlog Keseruan Anak SD", upload: "1 Apr 2026", eval: "7 Apr 2026", views: "15.2K", likes: "1.4K", comments: "230", shares: "312", favs: "180", er: "13.96%", erType: "good" },
-  { id: 2, name: "Fakta Unik Burung Nuri", upload: "3 Apr 2026", eval: "9 Apr 2026", views: "8.4K", likes: "720", comments: "95", shares: "140", favs: "88", er: "12.34%", erType: "good" },
-  { id: 3, name: "Promo Tiket Rombongan", upload: "8 Apr 2026", eval: "14 Apr 2026", views: "6.3K", likes: "410", comments: "67", shares: "89", favs: "55", er: "9.86%", erType: "average" },
-  { id: 4, name: "Behind the Scenes Wahana", upload: "12 Apr 2026", eval: "18 Apr 2026", views: "4.1K", likes: "290", comments: "44", shares: "62", favs: "31", er: "10.41%", erType: "good" },
-  { id: 5, name: "Sejarah Sanggaluri Park", upload: "15 Apr 2026", eval: "18 Apr 2026", views: "9.8K", likes: "870", comments: "150", shares: "210", favs: "120", er: "13.78%", erType: "good" },
-  { id: 6, name: "Tips Foto di Sanggaluri", upload: "3 Apr 2026", eval: "9 Apr 2026", views: "7.2K", likes: "610", comments: "88", shares: "155", favs: "72", er: "12.85%", erType: "good" },
-  { id: 7, name: "Opening Hour Update", upload: "5 Apr 2026", eval: "11 Apr 2026", views: "0", likes: "0", comments: "0", shares: "0", favs: "0", er: "0.00%", erType: "none" },
-];
+// We will fetch real data from the database
 
 const statusUploadOptions = ["Uploaded", "Unuploaded", "Pending", "Cancelled"];
 
 export default function EvaluationPage() {
-  const [activeFilter, setActiveFilter] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [kontenList, setKontenList] = useState<any[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState(0); // 0: All, 1: Last Week
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [limit, setLimit] = useState(10);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
   const [selectedRow, setSelectedRow] = useState<any>(null);
 
   const [editForm, setEditForm] = useState({
-    name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded"
+    id_evaluasi: "", id_konten: "", name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded"
   });
 
   const [addForm, setAddForm] = useState({
-    name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded"
+    id_konten: "", name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded"
   });
 
-  const handleEditClick = (row: any) => {
-    setSelectedRow(row);
+  useEffect(() => {
+    fetchData();
+  }, [selectedMonth, activeFilter, limit]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const workspaceId = localStorage.getItem("active_workspace_id");
+      if (!workspaceId) return;
+
+      const data = await getKonten(workspaceId);
+      
+      // Apply filters client-side for now to match the UI behavior
+      let filteredData = [...data];
+      
+      // Filter by month if not 'all'
+      if (selectedMonth !== 'all') {
+        const monthMap: Record<string, number> = {
+          'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+          'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+        };
+        const targetMonth = monthMap[selectedMonth.toLowerCase()];
+        filteredData = filteredData.filter((item: any) => {
+          if (!item.tanggal_upload) return false;
+          return new Date(item.tanggal_upload).getMonth() === targetMonth;
+        });
+      }
+
+      // Filter by Last Week if activeFilter === 1
+      if (activeFilter === 1) {
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        filteredData = filteredData.filter((item: any) => {
+          if (!item.tanggal_upload) return false;
+          return new Date(item.tanggal_upload) >= lastWeek;
+        });
+      }
+
+      setKontenList(filteredData.slice(0, limit));
+
+      // Compute Stats
+      const uploaded = data.filter((k: any) => k.status_konten === 'uploaded').length;
+      const unuploaded = data.filter((k: any) => k.status_konten === 'unuploaded').length;
+      const pending = data.filter((k: any) => k.status_konten === 'pending').length;
+      const cancelled = data.filter((k: any) => k.status_konten === 'cancelled').length;
+
+      setStats([
+        { label: "Total Konten", value: data.length },
+        { label: "Uploaded", value: uploaded, valueColor: "text-[#10b981]" },
+        { label: "Unuploaded", value: unuploaded, valueColor: "text-[#ef4444]" },
+        { label: "Pending", value: pending, valueColor: "text-[#f59e0b]" },
+        { label: "Cancelled", value: cancelled, valueColor: "text-[#64748b]" },
+      ]);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditClick = (konten: any) => {
+    const evalData = konten.evaluasi?.[0];
+    setSelectedRow(konten);
     setEditForm({
-      name: row.name,
-      uploadDate: "2026-04-03",
-      evalDate: "2026-04-03",
-      views: row.views.replace("K", "000").replace(".", ""),
-      likes: row.likes.replace("K", "000").replace(".", ""),
-      comments: row.comments,
-      shares: row.shares,
-      favs: row.favs,
-      statusUpload: "Uploaded"
+      id_evaluasi: evalData?.id_evaluasi || "",
+      id_konten: konten.id_konten,
+      name: konten.nama_konten,
+      uploadDate: konten.tanggal_upload ? new Date(konten.tanggal_upload).toISOString().split('T')[0] : "",
+      evalDate: evalData?.tanggal_evaluasi ? new Date(evalData.tanggal_evaluasi).toISOString().split('T')[0] : "",
+      views: evalData?.total_views?.toString() || "0",
+      likes: evalData?.total_likes?.toString() || "0",
+      comments: evalData?.total_comment?.toString() || "0",
+      shares: evalData?.total_shares?.toString() || "0",
+      favs: evalData?.total_favorites?.toString() || "0",
+      statusUpload: konten.status_konten ? konten.status_konten.charAt(0).toUpperCase() + konten.status_konten.slice(1) : "Uploaded"
     });
     setIsEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    setIsEditOpen(false);
-    setSuccessMsg("Laporan performa untuk konten ini berhasil disimpan dari tabel evaluasi.");
+  const handleSaveEdit = async () => {
+    try {
+      if (editForm.id_evaluasi) {
+        await updateEvaluasi(editForm.id_evaluasi, {
+          tanggal_evaluasi: editForm.evalDate ? new Date(editForm.evalDate) : null,
+          total_views: parseInt(editForm.views),
+          total_likes: parseInt(editForm.likes),
+          total_comment: parseInt(editForm.comments),
+          total_shares: parseInt(editForm.shares),
+          total_favorites: parseInt(editForm.favs),
+        });
+      } else {
+        await createEvaluasi({
+          id_konten: Number(editForm.id_konten),
+          tanggal_evaluasi: editForm.evalDate ? new Date(editForm.evalDate) : null,
+          total_views: parseInt(editForm.views),
+          total_likes: parseInt(editForm.likes),
+          total_comment: parseInt(editForm.comments),
+          total_shares: parseInt(editForm.shares),
+          total_favorites: parseInt(editForm.favs),
+        });
+      }
+
+      setIsEditOpen(false);
+      setSuccessMsg("Laporan performa untuk konten ini berhasil disimpan.");
+      fetchData();
+    } catch (error) {
+      console.error("Error saving evaluation:", error);
+      alert("Gagal menyimpan evaluasi");
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setDeleteConfirm(id);
+  const handleDelete = (konten: any) => {
+    const evalData = konten.evaluasi?.[0];
+    if (evalData) {
+      setDeleteConfirm(evalData);
+    } else {
+      alert("Konten ini belum memiliki data evaluasi");
+    }
   };
 
-  const confirmDelete = () => {
-    setDeleteConfirm(null);
-    setSuccessMsg("Berhasil Dihapus!\nKonten yang kamu pilih sudah berhasil dihapus dari sistem.");
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteEvaluasi(deleteConfirm.id_evaluasi);
+      setDeleteConfirm(null);
+      setSuccessMsg("Berhasil Dihapus!\nData evaluasi sudah berhasil dihapus.");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting evaluation:", error);
+      alert("Gagal menghapus evaluasi");
+    }
   };
 
-  const handleSaveAdd = () => {
-    setIsAddOpen(false);
-    setSuccessMsg("Data konten kamu telah berhasil ditambahkan ke dalam sistem SanggaluriSM");
+  const handleExport = (format: 'csv' | 'xlsx') => {
+    const workspaceId = localStorage.getItem("active_workspace_id");
+    if (!workspaceId) return;
+
+    const filterType = activeFilter === 1 ? 'last_week' : 'all';
+    const params = new URLSearchParams({
+      workspaceId,
+      month: selectedMonth,
+      filter: filterType,
+      format
+    });
+
+    window.open(`/api/export-laporan?${params.toString()}`, '_blank');
+  };
+
+  const handleSaveAdd = async () => {
+    try {
+      await createEvaluasi({
+        id_konten: Number(addForm.id_konten),
+        tanggal_evaluasi: addForm.evalDate ? new Date(addForm.evalDate) : null,
+        total_views: parseInt(addForm.views) || 0,
+        total_likes: parseInt(addForm.likes) || 0,
+        total_comment: parseInt(addForm.comments) || 0,
+        total_shares: parseInt(addForm.shares) || 0,
+        total_favorites: parseInt(addForm.favs) || 0,
+      });
+
+      setIsAddOpen(false);
+      setSuccessMsg("Data evaluasi berhasil ditambahkan.");
+      fetchData();
+    } catch (error) {
+      console.error("Error adding evaluation:", error);
+      alert("Gagal menambahkan evaluasi");
+    }
   };
 
   // Compute ER from form values
-  const computeER = (form: typeof editForm) => {
+  const computeER = (form: any) => {
     const views = parseInt(form.views) || 0;
     const likes = parseInt(form.likes) || 0;
     const comments = parseInt(form.comments) || 0;
@@ -101,7 +228,7 @@ export default function EvaluationPage() {
 
       {/* Top Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {initialStats.map((stat, idx) => (
+        {stats.map((stat, idx) => (
           <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">{stat.label}</h3>
             <div className={clsx("text-3xl font-extrabold", stat.valueColor || "text-[#1e293b]")}>{stat.value}</div>
@@ -121,8 +248,18 @@ export default function EvaluationPage() {
           </button>
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
             <div className="py-2">
-              <button className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">Export as Excel (.xlsx)</button>
-              <button className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">Export as CSV (.csv)</button>
+              <button 
+                onClick={() => handleExport('xlsx')}
+                className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Export as Excel (.xlsx)
+              </button>
+              <button 
+                onClick={() => handleExport('csv')}
+                className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Export as CSV (.csv)
+              </button>
             </div>
           </div>
         </div>
@@ -133,7 +270,11 @@ export default function EvaluationPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <h3 className="text-xl font-bold text-[#1e293b]">Tabel Evaluasi Konten</h3>
           <div className="flex flex-wrap items-center gap-2">
-            <select className="px-4 py-2 text-xs font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-[#10b981]">
+            <select 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2 text-xs font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-[#10b981]"
+            >
               <option value="all">Semua Bulan</option>
               <option value="jan">Januari</option>
               <option value="feb">Februari</option>
@@ -158,7 +299,11 @@ export default function EvaluationPage() {
                 </button>
               ))}
             </div>
-            <select className="px-4 py-2 text-xs font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-[#10b981]">
+            <select 
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="px-4 py-2 text-xs font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-[#10b981]"
+            >
               <option value="10">10 Data</option>
               <option value="25">25 Data</option>
               <option value="50">50 Data</option>
@@ -166,7 +311,7 @@ export default function EvaluationPage() {
             </select>
             <button 
               onClick={() => {
-                setAddForm({ name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded" });
+                setAddForm({ id_konten: "", name: "", uploadDate: "", evalDate: "", views: "", likes: "", comments: "", shares: "", favs: "", statusUpload: "Uploaded" });
                 setIsAddOpen(true);
               }}
               className="flex items-center gap-2 px-6 py-2.5 bg-[#122C28] text-white text-xs font-bold rounded-xl hover:bg-[#1B3C37] transition-all"
@@ -194,46 +339,70 @@ export default function EvaluationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {initialData.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-4 py-4">
-                    <span className="text-sm font-bold text-[#1e293b]">{row.name}</span>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-gray-500 font-medium">{row.upload}</td>
-                  <td className="px-4 py-4 text-xs text-gray-500 font-medium">{row.eval}</td>
-                  <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{row.views}</td>
-                  <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{row.likes}</td>
-                  <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{row.comments}</td>
-                  <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{row.shares}</td>
-                  <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{row.favs}</td>
-                  <td className="px-4 py-4">
-                    <span className={clsx(
-                      "px-3 py-1 rounded-md text-[10px] font-bold",
-                      row.erType === "good" && "bg-[#ccfbf1] text-[#0f766e]",
-                      row.erType === "average" && "bg-[#dcfce7] text-[#166534]",
-                      row.erType === "none" && "bg-[#fee2e2] text-[#991b1b]",
-                    )}>
-                      {row.er}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
-                        onClick={() => handleEditClick(row)}
-                        className="p-2 bg-[#f59e0b] text-white rounded-lg hover:bg-[#d97706] transition-all"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(row.id)}
-                        className="p-2 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="py-20 text-center">
+                    <Loader2 className="w-8 h-8 text-[#10b981] animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 font-medium">Memuat data evaluasi...</p>
                   </td>
                 </tr>
-              ))}
+              ) : kontenList.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-20 text-center text-gray-400 font-medium">Belum ada data konten</td>
+                </tr>
+              ) : (
+                kontenList.map((konten) => {
+                  const evalData = konten.evaluasi?.[0];
+                  const er = evalData?.nilai_er ? (Number(evalData.nilai_er)).toFixed(2) + "%" : "0.00%";
+                  const erVal = evalData?.nilai_er ? Number(evalData.nilai_er) : 0;
+                  const erType = erVal > 10 ? "good" : erVal > 5 ? "average" : erVal > 0 ? "average" : "none";
+
+                  return (
+                    <tr key={konten.id_konten} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-bold text-[#1e293b]">{konten.nama_konten}</span>
+                      </td>
+                      <td className="px-4 py-4 text-xs text-gray-500 font-medium">
+                        {konten.tanggal_upload ? new Date(konten.tanggal_upload).toLocaleDateString('id-ID') : "-"}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-gray-500 font-medium">
+                        {evalData?.tanggal_evaluasi ? new Date(evalData.tanggal_evaluasi).toLocaleDateString('id-ID') : "-"}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{evalData?.total_views || 0}</td>
+                      <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{evalData?.total_likes || 0}</td>
+                      <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{evalData?.total_comment || 0}</td>
+                      <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{evalData?.total_shares || 0}</td>
+                      <td className="px-4 py-4 text-xs text-[#1e293b] font-bold">{evalData?.total_favorites || 0}</td>
+                      <td className="px-4 py-4">
+                        <span className={clsx(
+                          "px-3 py-1 rounded-md text-[10px] font-bold",
+                          erType === "good" && "bg-[#ccfbf1] text-[#0f766e]",
+                          erType === "average" && "bg-[#dcfce7] text-[#166534]",
+                          erType === "none" && "bg-[#fee2e2] text-[#991b1b]",
+                        )}>
+                          {er}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => handleEditClick(konten)}
+                            className="p-2 bg-[#f59e0b] text-white rounded-lg hover:bg-[#d97706] transition-all"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(konten)}
+                            className="p-2 bg-[#ef4444] text-white rounded-lg hover:bg-[#dc2626] transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -372,14 +541,24 @@ export default function EvaluationPage() {
 
           <div className="space-y-5">
             <div>
-              <label className="text-xs font-bold text-[#64748b] mb-1.5 block">Nama Konten *</label>
-              <input
-                type="text"
-                placeholder="Pilih atau masukkan nama konten..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-[#1e293b] outline-none focus:border-[#10b981] transition-all placeholder:text-gray-300"
-                value={addForm.name}
-                onChange={(e) => setAddForm({...addForm, name: e.target.value})}
-              />
+              <label className="text-xs font-bold text-[#64748b] mb-1.5 block">Pilih Konten *</label>
+              <select
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-[#1e293b] outline-none focus:border-[#10b981] transition-all"
+                value={addForm.id_konten}
+                onChange={(e) => {
+                  const k = kontenList.find(item => item.id_konten.toString() === e.target.value);
+                  setAddForm({
+                    ...addForm, 
+                    id_konten: e.target.value,
+                    uploadDate: k?.tanggal_upload ? new Date(k.tanggal_upload).toISOString().split('T')[0] : ""
+                  });
+                }}
+              >
+                <option value="">Pilih Konten...</option>
+                {kontenList.map(k => (
+                  <option key={k.id_konten} value={k.id_konten.toString()}>{k.nama_konten}</option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

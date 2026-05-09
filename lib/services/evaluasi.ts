@@ -10,7 +10,7 @@ function serializeData(obj: any): any {
 
 export async function getEvaluasiByKonten(idKonten: number | string) {
   const data = await prisma.evaluasi.findFirst({
-    where: { id_konten: Number(idKonten) }
+    where: { id_konten: BigInt(idKonten) }
   });
   return serializeData(data);
 }
@@ -33,7 +33,7 @@ export async function updateEvaluasi(idEvaluasi: number | string, updates: any) 
   const { nilai_er, ...safeUpdates } = updates;
 
   const data = await prisma.evaluasi.update({
-    where: { id_evaluasi: Number(idEvaluasi) },
+    where: { id_evaluasi: BigInt(idEvaluasi) },
     data: {
       ...safeUpdates,
       updated_at: new Date(),
@@ -45,6 +45,6 @@ export async function updateEvaluasi(idEvaluasi: number | string, updates: any) 
 
 export async function deleteEvaluasi(idEvaluasi: number | string) {
   await prisma.evaluasi.delete({
-    where: { id_evaluasi: Number(idEvaluasi) }
+    where: { id_evaluasi: BigInt(idEvaluasi) }
   });
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { loginAdmin } from "@/lib/services/auth";
+import { loginAdminAction } from "@/lib/actions/auth";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { getUserWorkspaces } from "@/lib/services/workspace";
 import Link from "next/link";
 
@@ -12,24 +11,33 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMsg(null);
+    
     try {
-      const { user } = await loginAdmin(email, password);
-      if (user) {
-        const workspaces = await getUserWorkspaces(user.id);
-        if (workspaces && workspaces.length > 0) {
-          router.push("/admin");
-        } else {
-          router.push("/workspaces");
-        }
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
+      
+      const result = await loginAdminAction(formData);
+      
+      if (result && result.error) {
+        setErrorMsg(result.error);
+        return;
       }
+      
+      // If loginAdminAction redirects on server, the code below won't even run.
+      // But we can add a fallback redirect just in case.
+      router.push("/admin");
+      router.refresh();
     } catch (error: any) {
-      alert(error.message);
+      setErrorMsg("Terjadi kesalahan sistem. Silakan coba lagi.");
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -76,6 +84,11 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {errorMsg && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-xs p-3 rounded-lg text-center">
+                {errorMsg}
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-[#849591] flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5" />

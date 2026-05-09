@@ -1,40 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Modal } from "@/components/ui/Modal";
 import { SuccessDialog } from "@/components/ui/SuccessDialog";
+import { getKonten, createKonten, updateKonten, deleteKonten } from "@/lib/services/konten";
+import { Loader2 } from "lucide-react";
 
-const initialColumns = [
-  {
-    title: "Awareness",
-    items: [
-      { id: 1, title: "Fakta Unik Burung Nuri", date: "19 Apr 2026", time: "10:00", status: "Uploaded", format: "Carousel", pillar: "Awareness", description: "Konten edukasi tentang burung nuri di Sanggaluri Park." },
-      { id: 2, title: "Sejarah Sanggaluri Park", date: "21 Apr 2026", time: "09:00", status: "Pending", format: "Reel", pillar: "Awareness", description: "Sejarah singkat berdirinya Sanggaluri Park." },
-      { id: 3, title: "Vlog Keseruan Anak SD", date: "23 Apr 2026", time: "11:00", status: "Pending", format: "Reel", pillar: "Awareness", description: "Dokumentasi keseruan anak-anak SD saat kunjungan." },
-      { id: 4, title: "Mengenal Satwa Lokal", date: "25 Apr 2026", time: "13:00", status: "Pending", format: "Carousel", pillar: "Awareness", description: "Mengenal aneka satwa lokal yang ada di taman." },
-      { id: 5, title: "Opening Hour Update", date: "5 Apr 2026", time: "07:00", status: "Uploaded", format: "Story", pillar: "Awareness", description: "Update jam operasional terbaru Sanggaluri Park." },
-    ]
-  },
-  {
-    title: "Consideration",
-    items: [
-      { id: 6, title: "Behind the Scenes Wahana", date: "19 Apr 2026", time: "18:00", status: "Unuploaded", format: "Story", pillar: "Consideration", description: "Konten behind the scenes persiapan wahana baru." },
-      { id: 7, title: "FAQ Wahana Edukatif", date: "24 Apr 2026", time: "10:00", status: "Pending", format: "Carousel", pillar: "Consideration", description: "Jawaban pertanyaan umum tentang wahana edukatif." },
-      { id: 8, title: "Review Pengunjung", date: "22 Apr 2026", time: "16:00", status: "Pending", format: "Reel", pillar: "Consideration", description: "Kompilasi review pengunjung tentang pengalaman mereka." },
-      { id: 9, title: "Tips Foto di Sanggaluri", date: "3 Apr 2026", time: "09:00", status: "Uploaded", format: "Carousel", pillar: "Consideration", description: "Spot foto terbaik di kawasan Sanggaluri Park." },
-    ]
-  },
-  {
-    title: "Conversion",
-    items: [
-      { id: 10, title: "Promo Tiket Rombongan", date: "19 Apr 2026", time: "15:00", status: "Pending", format: "Reel", pillar: "Conversion", description: "Promo diskon untuk pembelian tiket rombongan." },
-      { id: 11, title: "Paket Wisata Edukasi", date: "26 Apr 2026", time: "14:00", status: "Pending", format: "Carousel", pillar: "Conversion", description: "Penawaran paket wisata edukasi untuk sekolah." },
-      { id: 12, title: "Flash Sale Weekend", date: "28 Apr 2026", time: "08:00", status: "Pending", format: "Story", pillar: "Conversion", description: "Promo flash sale khusus akhir pekan." },
-    ]
-  }
-];
+// Initial columns structure without mock data
+const columnTitles = ["Awareness", "Consideration", "Conversion"];
 
 const pillarOptions = ["Awareness", "Consideration", "Conversion"];
 const formatOptions = ["Reels", "Feed", "Story", "TikTok Video", "Carousel", "Short Video"];
@@ -50,15 +25,56 @@ interface ContentItem {
   pillar: string;
   description: string;
   link?: string;
+  tanggal_upload?: string | Date;
 }
 
 export default function ContentPlanPage() {
-  const [columns, setColumns] = useState(initialColumns);
-  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
+  const [columns, setColumns] = useState<{title: string, items: any[]}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addPillar, setAddPillar] = useState("Awareness");
   const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const workspaceId = localStorage.getItem("active_workspace_id");
+      if (!workspaceId) return;
+
+      const data = await getKonten(workspaceId);
+      
+      // Group data by pillar
+      const grouped = columnTitles.map(title => ({
+        title,
+        items: data.filter((item: any) => 
+          item.pillar?.toLowerCase() === title.toLowerCase()
+        ).map((item: any) => ({
+          ...item,
+          id: item.id_konten,
+          title: item.nama_konten,
+          date: item.tanggal_upload ? new Date(item.tanggal_upload).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : "-",
+          time: item.tanggal_upload ? new Date(item.tanggal_upload).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "-",
+          status: item.status_konten ? item.status_konten.charAt(0).toUpperCase() + item.status_konten.slice(1) : "Pending",
+          format: item.jenis_konten || "Reels",
+          pillar: item.pillar ? item.pillar.charAt(0).toUpperCase() + item.pillar.slice(1) : title,
+          description: item.deskripsi_konten || "",
+          link: item.link_konten || ""
+        }))
+      }));
+      
+      setColumns(grouped);
+    } catch (error) {
+      console.error("Error fetching content:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -76,8 +92,8 @@ export default function ContentPlanPage() {
       title: item.title,
       pillar: item.pillar,
       format: item.format,
-      date: item.date,
-      time: item.time,
+      date: item.tanggal_upload ? new Date(item.tanggal_upload).toISOString().split('T')[0] : "",
+      time: item.tanggal_upload ? new Date(item.tanggal_upload).toTimeString().split(' ')[0].substring(0, 5) : "",
       status: item.status,
       description: item.description,
       link: item.link || "",
@@ -85,14 +101,43 @@ export default function ContentPlanPage() {
     setIsEditOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    setIsEditOpen(false);
-    setSuccessMsg("Data konten kamu telah berhasil diperbarui ke dalam sistem SanggaluriMS");
+  const handleSaveEdit = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      const dateTime = editForm.date && editForm.time ? new Date(`${editForm.date}T${editForm.time}`) : null;
+      
+      await updateKonten(selectedItem.id, {
+        nama_konten: editForm.title,
+        pillar: editForm.pillar.toLowerCase(),
+        status_konten: editForm.status.toLowerCase(),
+        jenis_konten: editForm.format,
+        tanggal_upload: dateTime,
+        deskripsi_konten: editForm.description,
+        link_konten: editForm.link
+      });
+
+      setIsEditOpen(false);
+      setSuccessMsg("Data konten kamu telah berhasil diperbarui ke dalam sistem SanggaluriMS");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating content:", error);
+      alert("Gagal memperbarui konten");
+    }
   };
 
-  const handleDeleteContent = () => {
-    setIsEditOpen(false);
-    setSuccessMsg("Berhasil Dihapus!\nKonten yang kamu pilih sudah berhasil dihapus dari sistem.");
+  const handleDeleteContent = async () => {
+    if (!selectedItem) return;
+
+    try {
+      await deleteKonten(selectedItem.id);
+      setIsEditOpen(false);
+      setSuccessMsg("Berhasil Dihapus!\nKonten yang kamu pilih sudah berhasil dihapus dari sistem.");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      alert("Gagal menghapus konten");
+    }
   };
 
   const handleAddClick = (pillar: string) => {
@@ -101,9 +146,31 @@ export default function ContentPlanPage() {
     setIsAddOpen(true);
   };
 
-  const handleSaveAdd = () => {
-    setIsAddOpen(false);
-    setSuccessMsg("Data konten kamu telah berhasil ditambahkan ke dalam sistem SanggaluriMS");
+  const handleSaveAdd = async () => {
+    try {
+      const workspaceId = localStorage.getItem("active_workspace_id");
+      if (!workspaceId) return;
+
+      const dateTime = addForm.date && addForm.time ? new Date(`${addForm.date}T${addForm.time}`) : null;
+
+      await createKonten({
+        id_workspace: Number(workspaceId),
+        nama_konten: addForm.title,
+        pillar: addForm.pillar.toLowerCase(),
+        status_konten: addForm.status.toLowerCase(),
+        jenis_konten: addForm.format,
+        tanggal_upload: dateTime,
+        deskripsi_konten: addForm.description,
+        link_konten: addForm.link
+      });
+
+      setIsAddOpen(false);
+      setSuccessMsg("Data konten kamu telah berhasil ditambahkan ke dalam sistem SanggaluriMS");
+      fetchData();
+    } catch (error) {
+      console.error("Error adding content:", error);
+      alert("Gagal menambahkan konten");
+    }
   };
 
   return (
@@ -115,7 +182,13 @@ export default function ContentPlanPage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <Loader2 className="w-10 h-10 text-[#10b981] animate-spin" />
+          <p className="text-sm font-medium text-gray-500">Memuat data konten...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map((column, idx) => (
           <div key={idx} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col h-fit">
             <div className="flex items-center justify-between mb-8 px-2">
@@ -159,6 +232,7 @@ export default function ContentPlanPage() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Detail / Edit Konten Modal */}
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} maxWidth="max-w-xl">
@@ -220,7 +294,8 @@ export default function ContentPlanPage() {
                 <input
                   type="date"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-[#1e293b] outline-none focus:border-[#10b981] transition-all"
-                  defaultValue="2026-04-03"
+                  value={editForm.date}
+                  onChange={(e) => setEditForm({...editForm, date: e.target.value})}
                 />
               </div>
               <div>
@@ -228,7 +303,8 @@ export default function ContentPlanPage() {
                 <input
                   type="time"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-[#1e293b] outline-none focus:border-[#10b981] transition-all"
-                  defaultValue="09:00"
+                  value={editForm.time}
+                  onChange={(e) => setEditForm({...editForm, time: e.target.value})}
                 />
               </div>
             </div>

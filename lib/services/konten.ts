@@ -1,9 +1,7 @@
 "use server";
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
-
-const supabase = createClient();
 
 /**
  * Utility untuk serialize BigInt agar aman dikirim dari Server Action ke Client
@@ -16,7 +14,7 @@ function serializeData(obj: any): any {
 
 export async function getKonten(workspaceId?: string | number) {
   const data = await prisma.konten.findMany({
-    where: workspaceId ? { id_workspace: Number(workspaceId) } : undefined,
+    where: workspaceId ? { id_workspace: BigInt(workspaceId) } : undefined,
     include: {
       evaluasi: true
     }
@@ -26,6 +24,7 @@ export async function getKonten(workspaceId?: string | number) {
 }
 
 export async function createKonten(kontenData: any) {
+  const supabase = await createClient();
   // Ambil sesi user yang sedang login secara otomatis di Backend
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -44,7 +43,7 @@ export async function createKonten(kontenData: any) {
 
 export async function updateKonten(id: string | number, updates: any) {
   const data = await prisma.konten.update({
-    where: { id_konten: Number(id) },
+    where: { id_konten: BigInt(id) },
     data: {
       ...updates,
       updated_at: new Date(),
@@ -56,11 +55,12 @@ export async function updateKonten(id: string | number, updates: any) {
 
 export async function deleteKonten(id: string | number) {
   await prisma.konten.delete({
-    where: { id_konten: Number(id) }
+    where: { id_konten: BigInt(id) }
   });
 }
 
 export async function getTopKonten(workspaceId: number, year: number, month: number, limit: number = 5) {
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc('get_top_konten_bulanan', {
     ws_id: workspaceId,
     target_year: year,
@@ -75,6 +75,7 @@ export async function getTopKonten(workspaceId: number, year: number, month: num
 }
 
 export async function getGrowth(workspaceId: number, year: number, month: number) {
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc('get_growth_views_bulanan', {
     ws_id: workspaceId,
     target_year: year,
@@ -93,6 +94,7 @@ export async function getGrowth(workspaceId: number, year: number, month: number
 // ==========================================
 
 export async function uploadAsset(file: File, workspaceId: string | number) {
+  const supabase = await createClient();
   if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
     throw new Error('Tipe file tidak didukung. Mohon unggah gambar atau video.');
   }
