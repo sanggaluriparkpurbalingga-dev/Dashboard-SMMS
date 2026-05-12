@@ -16,7 +16,7 @@ import {
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { createClient } from "@/lib/supabase/client";
-import { logoutAdmin } from "@/lib/services/auth";
+import { logoutAdminAction } from "@/lib/actions/auth";
 import { getUserWorkspaces } from "@/lib/services/workspace";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
@@ -68,8 +68,7 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
-      await logoutAdmin();
-      router.push("/login");
+      await logoutAdminAction();
     } catch (error) {
       console.error("Logout error:", error);
     }

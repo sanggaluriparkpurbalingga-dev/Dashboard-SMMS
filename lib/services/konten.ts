@@ -16,7 +16,7 @@ function serializeData(obj: any): any {
 
 export async function getKonten(workspaceId?: string | number) {
   const data = await prisma.konten.findMany({
-    where: workspaceId ? { id_workspace: Number(workspaceId) } : undefined,
+    where: workspaceId ? { id_workspace: BigInt(workspaceId) } : undefined,
     include: {
       evaluasi: true,
     },
@@ -47,7 +47,7 @@ export async function createKonten(kontenData: any) {
 
 export async function updateKonten(id: string | number, updates: any) {
   const data = await prisma.konten.update({
-    where: { id_konten: Number(id) },
+    where: { id_konten: BigInt(id) },
     data: {
       ...updates,
       updated_at: new Date(),
@@ -100,6 +100,40 @@ export async function getGrowth(
     throw error;
   }
   return data?.[0] || null;
+}
+
+export async function getTrendViews(workspaceId: number) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const data = await prisma.evaluasi.findMany({
+    where: {
+      konten: {
+        id_workspace: BigInt(workspaceId),
+      },
+      tanggal_evaluasi: {
+        gte: sevenDaysAgo,
+      },
+    },
+    select: {
+      tanggal_evaluasi: true,
+      total_views: true,
+    },
+    orderBy: {
+      tanggal_evaluasi: "asc",
+    },
+  });
+
+  // Group by date to handle multiple contents in one day
+  const trend = data.reduce((acc: any, curr) => {
+    const date = curr.tanggal_evaluasi?.toISOString().split("T")[0];
+    if (date) {
+      acc[date] = (acc[date] || 0) + (curr.total_views || 0);
+    }
+    return acc;
+  }, {});
+
+  return Object.entries(trend).map(([date, views]) => ({ date, views }));
 }
 
 // ==========================================

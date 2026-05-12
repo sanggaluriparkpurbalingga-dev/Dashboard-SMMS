@@ -14,7 +14,7 @@ import {
 import { clsx } from "clsx";
 import { createClient } from "@/lib/supabase/client";
 import { getUserWorkspaces } from "@/lib/services/workspace";
-import { getKonten, getTopKonten, getGrowth } from "@/lib/services/konten";
+import { getKonten, getTopKonten, getGrowth, getTrendViews } from "@/lib/services/konten";
 
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [konten, setKonten] = useState<any[]>([]);
   const [topKonten, setTopKonten] = useState<any[]>([]);
   const [growth, setGrowth] = useState<any>(null);
+  const [trendViews, setTrendViews] = useState<any[]>([]);
 
   const supabase = createClient();
 
@@ -44,7 +45,7 @@ export default function DashboardPage() {
         setWorkspace(activeWs);
 
         if (activeWs) {
-          await fetchDashboardData(activeWs.id_workspace);
+          await fetchDashboardData(Number(activeWs.id_workspace));
         }
       }
     } catch (error) {
@@ -60,15 +61,17 @@ export default function DashboardPage() {
     const month = now.getMonth() + 1;
 
     try {
-      const [kontenData, topData, growthData] = await Promise.all([
+      const [kontenData, topData, growthData, trendData] = await Promise.all([
         getKonten(wsId),
         getTopKonten(wsId, year, month),
-        getGrowth(wsId, year, month)
+        getGrowth(wsId, year, month),
+        getTrendViews(wsId)
       ]);
 
       setKonten(kontenData || []);
       setTopKonten(topData || []);
       setGrowth(growthData);
+      setTrendViews(trendData || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     }
@@ -88,35 +91,37 @@ export default function DashboardPage() {
     return acc + (evaluasi.total_likes || 0);
   }, 0);
 
-  const avgER = konten.length > 0 ? (konten.reduce((acc, curr) => {
+  const totalER = konten.reduce((acc, curr) => {
     const evaluasi = curr.evaluasi?.[0] || {};
     return acc + Number(evaluasi.nilai_er || 0);
-  }, 0) / konten.length).toFixed(1) : "0";
+  }, 0);
+  
+  const avgER = konten.length > 0 ? (totalER / konten.length).toFixed(1) : "0";
 
   const stats = [
     {
       title: "Total Content Uploaded This Month",
       value: konten.filter(k => k.status_konten?.toLowerCase() === 'uploaded').length.toString(),
       icon: <div className="p-2 bg-[#EEF2FF] rounded-lg text-[#6366F1]"><UploadCloud className="w-5 h-5" /></div>,
-      trendText: "↑ 4 dari target",
+      trendText: `↑ ${konten.filter(k => k.status_konten?.toLowerCase() === 'uploaded').length} dari target`,
     },
     {
       title: "Metrik Pertumbuhan Views Last Month",
-      value: `+${growth?.growth_percentage || 0}%`,
+      value: `${growth?.growth_percentage || 0}%`,
       icon: <div className="p-2 bg-[#FFFBEB] rounded-lg text-[#F59E0B]"><FileText className="w-5 h-5" /></div>,
-      trendText: "↑ vs bulan lalu",
+      trendText: growth?.growth_percentage >= 0 ? "↑ vs bulan lalu" : "↓ vs bulan lalu",
     },
     {
       title: "Total Likes Bulan Ini",
       value: totalLikes > 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes.toString(),
       icon: <div className="p-2 bg-[#FEF2F2] rounded-lg text-[#EF4444]"><Heart className="w-5 h-5" /></div>,
-      trendText: "↑ +5%",
+      trendText: "↑ Berdasarkan data evaluasi",
     },
     {
       title: "Rata-rata ER",
       value: `${avgER}%`,
       icon: <div className="p-2 bg-[#FFF7ED] rounded-lg text-[#F97316]"><Zap className="w-5 h-5" /></div>,
-      trendText: "↑ Bagus",
+      trendText: Number(avgER) > 5 ? "↑ Bagus" : "• Perlu ditingkatkan",
     },
   ];
 
@@ -124,13 +129,17 @@ export default function DashboardPage() {
 
   // Pillars count
   const pillars = {
-    AWARENESS: konten.filter(k => k.pillar?.toLowerCase() === 'awareness').length || 5, // fallback 5
-    CONSIDERATION: konten.filter(k => k.pillar?.toLowerCase() === 'consideration').length || 4, // fallback 4
-    CONVERSION: konten.filter(k => k.pillar?.toLowerCase() === 'conversion').length || 3 // fallback 3
+    AWARENESS: konten.filter(k => k.pillar?.toLowerCase() === 'awareness').length,
+    CONSIDERATION: konten.filter(k => k.pillar?.toLowerCase() === 'consideration').length,
+    CONVERSION: konten.filter(k => k.pillar?.toLowerCase() === 'conversion').length
   };
 
-  // Mapped recent content
-  const recentContent = konten.slice(0, 5).map(k => {
+  // Filter Today's content
+  const today = new Date().toISOString().split('T')[0];
+  const todayContent = konten.filter(k => {
+    if (!k.tanggal_upload) return false;
+    return k.tanggal_upload.split('T')[0] === today;
+  }).map(k => {
     let badgeColor = "bg-[#ECFCCB] text-[#4D7C0F]";
     let badgeText = "UPLOADED";
     const status = k.status_konten?.toLowerCase();
@@ -141,21 +150,14 @@ export default function DashboardPage() {
     return {
       id: k.id_konten,
       title: k.nama_konten,
-      subtitle: `${k.pillar || 'Awareness'} • ${k.content_type || 'Video'} • 10:00 WIB`,
+      subtitle: `${k.pillar || '-'} • ${k.jenis_konten || '-'} • 10:00 WIB`,
       badgeColor,
       badgeText,
-      link: k.content_link
+      link: k.link_konten
     }
   });
 
-  // Fallback if no content
-  if (recentContent.length === 0) {
-    recentContent.push(
-      { id: 1, title: "Fakta Unik Burung Nuri", subtitle: "Awareness • Carousel • 10:00 WIB", badgeColor: "bg-[#ECFCCB] text-[#4D7C0F]", badgeText: "UPLOADED", link: "https://instagram.com" },
-      { id: 2, title: "Promo Tiket Rombongan", subtitle: "Conversion • Reel • 15:00 WIB", badgeColor: "bg-[#FFEDD5] text-[#C2410C]", badgeText: "PENDING", link: null },
-      { id: 3, title: "Behind the Scenes Wahana", subtitle: "Consideration • Story • 18:00 WIB", badgeColor: "bg-[#FEE2E2] text-[#B91C1C]", badgeText: "UNUPLOADED", link: null }
-    );
-  }
+  const pendingToday = todayContent.filter(i => i.badgeText === "PENDING").length;
 
   return (
     <div className="space-y-6">
@@ -191,13 +193,17 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-6">
             <div>
               <h3 className="text-sm font-bold text-[#1e293b]">Today's Upload</h3>
-              <p className="text-xs text-gray-400 mt-1">Minggu, 19 April 2026</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
             </div>
-            <span className="text-xs font-bold text-[#f59e0b] bg-[#fef3c7] px-2 py-1 rounded-md">2 PENDING</span>
+            {pendingToday > 0 && (
+              <span className="text-xs font-bold text-[#f59e0b] bg-[#fef3c7] px-2 py-1 rounded-md">{pendingToday} PENDING</span>
+            )}
           </div>
 
           <div className="space-y-3">
-            {recentContent.map(item => (
+            {todayContent.length > 0 ? todayContent.map(item => (
               <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
                 <div className="flex-1">
                   <h4 className="font-bold text-sm text-[#1e293b]">
@@ -215,7 +221,11 @@ export default function DashboardPage() {
                   {item.badgeText}
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-12 border-2 border-dashed border-gray-50 rounded-2xl">
+                <p className="text-sm text-gray-400">Tidak ada konten dijadwalkan hari ini.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -229,34 +239,34 @@ export default function DashboardPage() {
               <span className="text-xs font-bold text-[#F59E0B]">Top Performer</span>
             </div>
 
-            <h3 className="text-xl font-bold mb-6">
-              {mainTopKonten ? mainTopKonten.nama_konten : "Vlog Keseruan Anak SD"}
+            <h3 className="text-xl font-bold mb-6 line-clamp-2 min-h-[3.5rem]">
+              {mainTopKonten ? mainTopKonten.nama_konten : "Belum Ada Data"}
             </h3>
 
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 gap-y-4 gap-x-2">
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Views</p>
-                <p className="text-sm font-bold">{mainTopKonten ? (mainTopKonten.metric_value / 1000).toFixed(1) + 'K' : '15.2K'}</p>
+                <p className="text-sm font-bold">{mainTopKonten ? (mainTopKonten.metric_value >= 1000 ? (mainTopKonten.metric_value / 1000).toFixed(1) + 'K' : mainTopKonten.metric_value) : '-'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Likes</p>
-                <p className="text-sm font-bold">1.4K</p>
+                <p className="text-sm font-bold">{mainTopKonten?.total_likes || '-'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Comment</p>
-                <p className="text-sm font-bold">230</p>
+                <p className="text-sm font-bold">{mainTopKonten?.total_comment || '-'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Share</p>
-                <p className="text-sm font-bold">312</p>
+                <p className="text-sm font-bold">{mainTopKonten?.total_share || '-'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">Favorite</p>
-                <p className="text-sm font-bold">180</p>
+                <p className="text-sm font-bold">{mainTopKonten?.total_favorite || '-'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-white/50 mb-1">ER</p>
-                <p className="text-sm font-bold text-[#10b981]">8.2%</p>
+                <p className="text-sm font-bold text-[#10b981]">{mainTopKonten?.nilai_er ? `${mainTopKonten.nilai_er}%` : '-'}</p>
               </div>
             </div>
           </div>
@@ -283,19 +293,37 @@ export default function DashboardPage() {
           {/* Trend Views */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h3 className="text-xs font-bold text-gray-500 mb-6">Trend Views (7 Hari)</h3>
-            <div className="flex items-end justify-between h-32 gap-2">
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[10%]"></div>
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[30%]"></div>
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[50%]"></div>
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[20%]"></div>
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[65%]"></div>
-              <div className="w-full bg-[#e2e8f0] rounded-t-md h-[40%]"></div>
-              <div className="w-full bg-[#10b981] rounded-t-md h-[95%]"></div>
+            <div className="flex items-end justify-between h-32 gap-1">
+              {trendViews.length > 0 ? trendViews.map((item, idx) => {
+                const maxViews = Math.max(...trendViews.map(v => v.views)) || 1;
+                const height = (item.views / maxViews) * 100;
+                return (
+                  <div 
+                    key={idx} 
+                    className={clsx(
+                      "w-full rounded-t-md transition-all duration-500",
+                      idx === trendViews.length - 1 ? "bg-[#10b981]" : "bg-[#e2e8f0]"
+                    )}
+                    style={{ height: `${Math.max(height, 5)}%` }}
+                    title={`${item.date}: ${item.views} views`}
+                  ></div>
+                );
+              }) : (
+                <div className="w-full flex items-center justify-center h-full">
+                  <span className="text-[10px] text-gray-300 italic text-center">Data trend belum tersedia</span>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-[9px] font-bold text-gray-400">4.2K views</span>
-              <span className="text-[9px] font-bold text-gray-400 text-right">15.2K<br />views</span>
-            </div>
+            {trendViews.length > 0 && (
+              <div className="flex justify-between mt-2">
+                <span className="text-[9px] font-bold text-gray-400">
+                  {trendViews[0].views >= 1000 ? `${(trendViews[0].views / 1000).toFixed(1)}K` : trendViews[0].views} views
+                </span>
+                <span className="text-[9px] font-bold text-gray-400 text-right">
+                  {trendViews[trendViews.length - 1].views >= 1000 ? `${(trendViews[trendViews.length - 1].views / 1000).toFixed(1)}K` : trendViews[trendViews.length - 1].views} views
+                </span>
+              </div>
+            )}
           </div>
 
         </div>

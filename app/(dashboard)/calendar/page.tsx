@@ -1,158 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
-
-// Mock calendar content data
-const mockEvents: Record<
-  string,
-  {
-    time: string;
-    title: string;
-    pillar: string;
-    contentType: string;
-    description: string;
-    contentLink?: string;
-    status: string;
-  }[]
-> = {
-  "2026-04-05": [
-    {
-      time: "07:00",
-      title: "Opening Hour Update",
-      pillar: "Awareness",
-      contentType: "Story",
-      description: "Update jam operasional.",
-      status: "Uploaded",
-    },
-  ],
-  "2026-04-18": [
-    {
-      time: "10:00",
-      title: "Mengenal Satwa Lokal",
-      pillar: "Awareness",
-      contentType: "Carousel",
-      description: "Draft konten.",
-      status: "Pending",
-    },
-  ],
-  "2026-04-19": [
-    {
-      time: "10:00",
-      title: "Fakta Unik Burung Nuri",
-      pillar: "Awareness",
-      contentType: "Carousel",
-      description: "Konten edukasi tentang burung nuri.",
-      status: "Uploaded",
-      contentLink: "https://instagram.com/p/123",
-    },
-    {
-      time: "15:00",
-      title: "Promo Tiket Rombongan",
-      pillar: "Conversion",
-      contentType: "Reels",
-      description: "Promo diskon tiket rombongan.",
-      status: "Pending",
-    },
-    {
-      time: "18:00",
-      title: "Behind the Scenes Wahana",
-      pillar: "Consideration",
-      contentType: "Story",
-      description: "BTS wahana baru.",
-      status: "Unuploaded",
-    },
-  ],
-  "2026-04-20": [
-    {
-      time: "10:00",
-      title: "Sejarah Sanggaluri",
-      pillar: "Awareness",
-      contentType: "Reels",
-      description: "Sejarah berdiri.",
-      status: "Pending",
-    },
-    {
-      time: "14:00",
-      title: "Flash Sale Weekend",
-      pillar: "Conversion",
-      contentType: "Story",
-      description: "Flash sale.",
-      status: "Unuploaded",
-    },
-  ],
-  "2026-04-22": [
-    {
-      time: "09:00",
-      title: "Tips Foto di Sanggaluri",
-      pillar: "Consideration",
-      contentType: "Carousel",
-      description: "Spot foto terbaik.",
-      status: "Uploaded",
-    },
-    {
-      time: "16:00",
-      title: "Review Pengunjung",
-      pillar: "Consideration",
-      contentType: "Reels",
-      description: "Kompilasi review.",
-      status: "Pending",
-    },
-    {
-      time: "11:00",
-      title: "Vlog Keseruan Anak SD",
-      pillar: "Awareness",
-      contentType: "Reels",
-      description: "Dokumentasi kunjungan.",
-      status: "Unuploaded",
-    },
-  ],
-  "2026-04-23": [
-    {
-      time: "10:00",
-      title: "Fakta Unik Burung Nuri",
-      pillar: "Awareness",
-      contentType: "Carousel",
-      description: "Konten edukasi tentang burung nuri.",
-      status: "Uploaded",
-    },
-    {
-      time: "10:00",
-      title: "Fakta Unik Burung Nuri",
-      pillar: "Awareness",
-      contentType: "Carousel",
-      description: "Konten edukasi tentang burung nuri.",
-      status: "Pending",
-    },
-    {
-      time: "10:00",
-      title: "Fakta Unik Burung Nuri",
-      pillar: "Awareness",
-      contentType: "Carousel",
-      description: "Konten edukasi tentang burung nuri.",
-      status: "Unuploaded",
-    },
-    {
-      time: "12:00",
-      title: "Kuis Tebak Hewan",
-      pillar: "Awareness",
-      contentType: "Story",
-      description: "Kuis interaktif.",
-      status: "Cancelled",
-    },
-  ],
-  "2026-04-24": [
-    {
-      time: "10:00",
-      title: "FAQ Wahana Edukatif",
-      pillar: "Consideration",
-      contentType: "Carousel",
-      description: "FAQ wahana.",
-      status: "Pending",
-    },
-  ],
-};
+import { getKonten } from "@/lib/services/konten";
 
 const DAY_NAMES = ["SEN", "SEL", "RAB", "KAM", "JUM", "SAB", "MIN"];
 const MONTH_NAMES = [
@@ -194,9 +45,53 @@ function formatDateKey(year: number, month: number, day: number) {
 }
 
 export default function CalendarPage() {
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(3); // April = 3 (0-indexed)
-  const [selectedDay, setSelectedDay] = useState<number | null>(23);
+  const now = new Date();
+  const [currentYear, setCurrentYear] = useState(now.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(now.getMonth());
+  const [selectedDay, setSelectedDay] = useState<number | null>(now.getDate());
+  const [kontenList, setKontenList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const workspaceId = localStorage.getItem("active_workspace_id");
+      if (workspaceId) {
+        const data = await getKonten(workspaceId);
+        setKontenList(data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching calendar data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Group events by date key
+  const eventsByDate = useMemo(() => {
+    const grouped: Record<string, any[]> = {};
+    kontenList.forEach(item => {
+      if (!item.tanggal_upload) return;
+      const date = new Date(item.tanggal_upload);
+      const key = formatDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({
+        time: date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        title: item.nama_konten,
+        pillar: item.pillar || 'Awareness',
+        contentType: item.jenis_konten || 'Video',
+        description: item.deskripsi || '-',
+        contentLink: item.link_konten,
+        status: item.status_konten || 'Pending'
+      });
+    });
+    return grouped;
+  }, [kontenList]);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDayOffset = getFirstDayOfMonth(currentYear, currentMonth);
@@ -222,21 +117,22 @@ export default function CalendarPage() {
   };
 
   const goToToday = () => {
-    setCurrentYear(2026);
-    setCurrentMonth(3);
-    setSelectedDay(23);
+    setCurrentYear(now.getFullYear());
+    setCurrentMonth(now.getMonth());
+    setSelectedDay(now.getDate());
   };
 
   // Get status dots for a day
   const getStatusDots = (day: number) => {
     const key = formatDateKey(currentYear, currentMonth, day);
-    const events = mockEvents[key];
+    const events = eventsByDate[key];
     if (!events) return [];
-    const statuses = new Set(events.map((e) => e.status));
+    const statuses = new Set(events.map((e) => e.status.toLowerCase()));
     const dots: string[] = [];
-    if (statuses.has("Pending")) dots.push("#f59e0b");
-    if (statuses.has("Unuploaded")) dots.push("#ef4444");
-    if (statuses.has("Uploaded")) dots.push("#10b981");
+    if (statuses.has("pending")) dots.push("#f59e0b");
+    if (statuses.has("unuploaded")) dots.push("#ef4444");
+    if (statuses.has("uploaded")) dots.push("#10b981");
+    if (statuses.has("cancelled")) dots.push("#64748b");
     return dots;
   };
 
@@ -245,7 +141,7 @@ export default function CalendarPage() {
     ? formatDateKey(currentYear, currentMonth, selectedDay)
     : null;
   const selectedEvents = selectedDateKey
-    ? mockEvents[selectedDateKey] || []
+    ? eventsByDate[selectedDateKey] || []
     : [];
 
   // Full day name for selected day
@@ -261,6 +157,14 @@ export default function CalendarPage() {
     return cells;
   }, [firstDayOffset, daysInMonth]);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[50vh]">
+        <Loader2 className="w-10 h-10 text-[#10b981] animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
       {/* Header */}
@@ -272,7 +176,7 @@ export default function CalendarPage() {
           </span>
         </div>
         <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm text-xs font-bold text-gray-500">
-          Jum, 24 Apr 2026
+          {now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
       </div>
 
@@ -446,13 +350,13 @@ export default function CalendarPage() {
                   <div
                     className={clsx(
                       "px-6 py-2 rounded-xl text-xs font-bold border shrink-0 text-center",
-                      event.status === "Uploaded" &&
+                      event.status.toLowerCase() === "uploaded" &&
                       "bg-[#ccfbf1] text-[#0f766e] border-[#0f766e]/10",
-                      event.status === "Pending" &&
+                      event.status.toLowerCase() === "pending" &&
                       "bg-[#fef3c7] text-[#92400e] border-[#92400e]/10",
-                      event.status === "Unuploaded" &&
+                      event.status.toLowerCase() === "unuploaded" &&
                       "bg-[#fee2e2] text-[#991b1b] border-[#991b1b]/10",
-                      event.status === "Cancelled" &&
+                      event.status.toLowerCase() === "cancelled" &&
                       "bg-gray-100 text-gray-500 border-gray-200",
                     )}
                   >
