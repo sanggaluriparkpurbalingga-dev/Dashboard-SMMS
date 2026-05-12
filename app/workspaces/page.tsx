@@ -45,25 +45,6 @@ export default function WorkspacesPage() {
     }
   }
 
-  async function handleCreateWorkspace(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newWorkspaceName) return;
-    setIsCreating(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await createWorkspace(user.id, newWorkspaceName);
-        setNewWorkspaceName("");
-        fetchWorkspaces();
-      }
-    } catch (error) {
-      console.error("Error creating workspace:", error);
-      alert("Gagal membuat workspace");
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
   const handleEnterDashboard = () => {
     if (selectedWsId) {
       localStorage.setItem("active_workspace_id", selectedWsId.toString());
@@ -79,52 +60,17 @@ export default function WorkspacesPage() {
     );
   }
 
-  // Skenario A: Belum punya workspace (Workspace.png)
+  // Skenario jika belum ada data (Fallback)
   if (workspaces.length === 0) {
     return (
-      <div className="min-h-screen flex bg-[#0c231f] font-sans overflow-hidden">
-        {/* Left Panel - Branding */}
-        <div className="hidden lg:flex flex-col justify-center w-1/2 p-16 relative z-10">
-          <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-[#146b4f] rounded-full blur-[150px] opacity-20 -translate-y-1/2 -z-10" />
-          <h1 className="text-6xl font-extrabold tracking-tight flex items-center">
-            <span className="text-[#10b981]">SANGGA</span>
-            <span className="text-white">LURI</span>
-          </h1>
-        </div>
-
-        {/* Right Panel - Add Workspace */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 z-20">
-          <div className="w-full max-w-md bg-[#161E20] p-10 sm:p-14 rounded-[3rem] shadow-2xl border border-white/5 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">Welcome to Sanggaluri Workspace</h2>
-            <p className="text-[#849591] text-sm mb-10 leading-relaxed">
-              Your personal space to plan, grow, and achieve more.
-            </p>
-
-            <form onSubmit={handleCreateWorkspace} className="relative">
-              <input
-                type="text"
-                placeholder="Workspace name"
-                className="w-full px-6 py-4 bg-[#0f1516] border border-white/10 text-white placeholder:text-[#455753] rounded-full outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all text-sm pr-24"
-                value={newWorkspaceName}
-                onChange={(e) => setNewWorkspaceName(e.target.value)}
-                required
-              />
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="absolute right-2 top-2 bottom-2 px-6 bg-[#052e24] text-white font-bold rounded-full hover:bg-[#073d30] transition-all flex items-center gap-2 text-xs border border-[#10b981]/30 disabled:opacity-70"
-              >
-                {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Add
-              </button>
-            </form>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#0c231f] flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-4xl font-extrabold text-white mb-4">No Workspaces Found</h1>
+        <p className="text-[#849591] max-w-md">Akun Anda belum terhubung dengan workspace Instagram atau TikTok. Silakan hubungi administrator.</p>
       </div>
     );
   }
 
-  // Skenario B: Sudah punya workspace (Workspace-1.png)
+  // Skenario B: Sudah punya workspace (Fixed)
   return (
     <div className="min-h-screen bg-[#0c231f] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-[#146b4f] rounded-full blur-[120px] opacity-20 -z-10" />
@@ -171,13 +117,6 @@ export default function WorkspacesPage() {
         >
           <span>Masuk ke Dashboard</span>
           <ArrowRight className="w-5 h-5" />
-        </button>
-
-        <button
-          onClick={() => setWorkspaces([])} // Trigger scenario A for demo or just allow adding
-          className="mt-6 text-[#849591] text-xs font-semibold hover:text-[#10b981] transition-colors"
-        >
-          + Tambah Workspace Lain
         </button>
       </div>
     </div>
