@@ -1,5 +1,6 @@
 import React from "react";
 import { Eye, Heart, MessageCircle, Share2, MoreHorizontal } from "lucide-react";
+import Image from "next/image";
 
 interface ContentItem {
   id: string;
@@ -42,7 +43,14 @@ export function ContentTable({ title, items }: ContentTableProps) {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gray-200 overflow-hidden flex-shrink-0">
-                      <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                      <Image 
+                        src={item.thumbnail} 
+                        alt={item.title} 
+                        width={48} 
+                        height={48} 
+                        className="w-full h-full object-cover" 
+                        sizes="48px"
+                      />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 truncate max-w-[200px]">{item.title}</p>

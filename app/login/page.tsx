@@ -100,6 +100,7 @@ export default function LoginPage() {
                 className="w-full px-4 py-3.5 bg-[#0f1516] border border-white/10 text-white placeholder:text-[#455753] rounded-xl outline-none focus:border-[#10b981]/50 focus:ring-1 focus:ring-[#10b981]/50 transition-all text-sm"
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                inputMode="email"
               />
             </div>
 

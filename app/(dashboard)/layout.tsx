@@ -106,7 +106,14 @@ export default function DashboardLayout({
         {/* Logo Section */}
         <div className="p-6 flex items-center gap-3">
           <div className="w-10 h-10 bg-black/20 rounded-lg flex items-center justify-center overflow-hidden">
-            <Image src="/logo.jpeg" alt="SanggaluriMS Logo" width={40} height={40} className="object-cover w-full h-full" />
+            <Image 
+              src="/logo.jpeg" 
+              alt="SanggaluriMS Logo" 
+              width={40} 
+              height={40} 
+              className="object-cover w-full h-full"
+              sizes="40px"
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-lg leading-tight tracking-tight">
@@ -125,9 +132,9 @@ export default function DashboardLayout({
               {activeWorkspace?.nama_workspace
                 ?.toLowerCase()
                 .includes("tiktok") ? (
-                <Image src="/tiktok.svg" alt="TikTok" width={24} height={24} />
+                <Image src="/tiktok.svg" alt="TikTok" width={24} height={24} sizes="24px" />
               ) : (
-                <Image src="/instagram.svg" alt="Instagram" width={24} height={24} />
+                <Image src="/instagram.svg" alt="Instagram" width={24} height={24} sizes="24px" />
               )}
             </div>
             <div className="flex flex-col">
@@ -154,7 +161,7 @@ export default function DashboardLayout({
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group text-sm font-medium",
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group text-sm font-medium min-h-[44px]",
                     isActive
                       ? "bg-[#10b981]/10 border border-[#10b981]/30 text-white"
                       : "text-white/70 hover:bg-white/5 hover:text-white border border-transparent",
@@ -179,7 +186,7 @@ export default function DashboardLayout({
         <div className="p-6 border-t border-[#1B3C37]">
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="flex items-center justify-center gap-3 w-full px-4 py-3 border border-white/20 text-white hover:bg-white/5 rounded-xl transition-all duration-200"
+            className="flex items-center justify-center gap-3 w-full px-4 py-3 border border-white/20 text-white hover:bg-white/5 rounded-xl transition-all duration-200 min-h-[44px]"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-semibold">Logout</span>
@@ -192,8 +199,9 @@ export default function DashboardLayout({
         {/* Mobile Header (Only visible on mobile) */}
         <header className="h-16 bg-white border-b border-border-custom flex items-center px-4 lg:hidden shrink-0">
           <button
-            className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="touch-target -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
             onClick={toggleSidebar}
+            aria-label="Toggle Sidebar"
           >
             <Menu className="w-6 h-6" />
           </button>

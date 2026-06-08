@@ -83,6 +83,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                inputMode="email"
               />
             </div>
 

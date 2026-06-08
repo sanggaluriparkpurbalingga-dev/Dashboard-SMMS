@@ -2,11 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
+import { Plus, Loader2, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getUserWorkspaces, createWorkspace } from "@/lib/services/workspace";
@@ -111,28 +107,38 @@ export default function WorkspacesPage() {
                   "w-full p-4 rounded-2xl flex items-center gap-4 border transition-all text-left group",
                   isSelected
                     ? "bg-[#10b981]/10 border-[#10b981] text-white"
-                    : "bg-[#0f1516] border-white/5 text-[#849591] hover:border-white/20",
+                    : "bg-[#0f1516] border-white/5 text-[#849591] hover:border-white/20"
                 )}
               >
                 <div
                   className={clsx(
                     "w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden",
-                    isTikTok
-                      ? "bg-white"
-                      : "bg-white",
+                    isTikTok ? "bg-white" : "bg-white"
                   )}
                 >
                   {isTikTok ? (
-                    <Image src="/tiktok.svg" alt="TikTok" width={28} height={28} />
+                    <Image
+                      src="/tiktok.svg"
+                      alt="TikTok"
+                      width={28}
+                      height={28}
+                      sizes="28px"
+                    />
                   ) : (
-                    <Image src="/instagram.svg" alt="Instagram" width={28} height={28} />
+                    <Image
+                      src="/instagram.svg"
+                      alt="Instagram"
+                      width={28}
+                      height={28}
+                      sizes="28px"
+                    />
                   )}
                 </div>
                 <div className="flex flex-col">
                   <span
                     className={clsx(
                       "font-bold",
-                      isSelected ? "text-white" : "text-white/80",
+                      isSelected ? "text-white" : "text-white/80"
                     )}
                   >
                     {isTikTok ? "TikTok" : "Instagram"}
