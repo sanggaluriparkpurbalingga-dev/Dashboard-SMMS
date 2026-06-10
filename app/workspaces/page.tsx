@@ -2,17 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { getUserWorkspaces, createWorkspace } from "@/lib/services/workspace";
+import { getUserWorkspaces } from "@/lib/services/workspace";
 import { clsx } from "clsx";
 
 export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedWsId, setSelectedWsId] = useState<number | null>(null);
 
   const router = useRouter();
@@ -24,6 +23,7 @@ export default function WorkspacesPage() {
 
   async function fetchWorkspaces() {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const {
         data: { user },
@@ -47,6 +47,9 @@ export default function WorkspacesPage() {
       }
     } catch (error) {
       console.error("Error loading workspaces:", error);
+      setLoadError(
+        "Workspace tidak dapat dimuat karena koneksi database gagal. Periksa DATABASE_URL pada konfigurasi deployment.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +66,24 @@ export default function WorkspacesPage() {
     return (
       <div className="min-h-screen bg-[#0c231f] flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-[#10b981] animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#0c231f] flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-4xl font-extrabold text-white mb-4">
+          Gagal Memuat Workspace
+        </h1>
+        <p className="text-[#849591] max-w-lg mb-8">{loadError}</p>
+        <button
+          onClick={fetchWorkspaces}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#10b981] text-white font-semibold rounded-xl hover:bg-[#059669] transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Coba Lagi
+        </button>
       </div>
     );
   }

@@ -11,10 +11,15 @@ function serializeData(obj: any): any {
 }
 
 export async function getUserWorkspaces(userId: string) {
-  const data = await prisma.workspace.findMany({
-    where: { author_id: userId },
-  });
-  return serializeData(data);
+  try {
+    const data = await prisma.workspace.findMany({
+      where: { author_id: userId },
+    });
+    return serializeData(data);
+  } catch (error) {
+    console.error("Failed to load user workspaces", { userId, error });
+    throw new Error("Unable to load workspaces from the database");
+  }
 }
 
 export async function createWorkspace(userId: string, name: string) {
